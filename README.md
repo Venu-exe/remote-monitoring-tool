@@ -33,3 +33,22 @@ Once connected, you can type commands in the server terminal, such as:
 - `get_system_info`: Returns all system info.
 - `get platform_info.system`: Returns a specific field from the system info.
 - `exit`: Closes the connection.
+
+## Example Output
+
+### Client Connection
+```text
+Enter server IP [127.0.0.1]: 
+Enter server port [5000]: 
+Connected to server 127.0.0.1:5000
+```
+
+### Server Command & Output
+```text
+Accepted connection from 127.0.0.1:58432
+Enter command to send to 127.0.0.1:58432 (or 'exit' to close connection): get platform_info.system
+{'path': 'platform_info.system', 'value': 'Linux'}
+
+Enter command to send to 127.0.0.1:58432 (or 'exit' to close connection): get memory_info.memory_percent
+{'path': 'memory_info.memory_percent', 'value': 45.2}
+```
