@@ -1,1 +1,2 @@
 psutil
+pytest  # only needed to run the test suite (python -m pytest tests/)
