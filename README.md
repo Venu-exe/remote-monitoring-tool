@@ -114,3 +114,33 @@ exit                            shut down
 pip install pytest
 python -m pytest tests/ -v
 ```
+
+The suite includes unauthorized-access tests: missing token, wrong token,
+malformed JSON, non-object JSON, and oversized (>4 MiB) handshakes are all
+rejected and the socket is closed (no file-descriptor leak).
+
+### Testing unauthorized access yourself
+
+```bash
+# Terminal 1 — start the collector with a token
+MONITOR_TOKEN=secret123 python monitor_server.py --port 5000
+
+# Terminal 2 — try to connect WITHOUT a token (expect: denied, then closed)
+printf '{"type":"hello","hostname":"attacker"}\n' | nc 127.0.0.1 5000
+
+# wrong token -> same "denied" reply
+printf '{"type":"hello","token":"letmein"}\n' | nc 127.0.0.1 5000
+
+# garbage / oversized payload -> connection closed with no reply
+printf 'hello server\n' | nc 127.0.0.1 5000
+```
+
+## Security notes
+
+* The v2 server (`monitor_server.py`) requires a shared token on every
+  handshake and caps message size at 4 MiB. Keep the token in the
+  `MONITOR_TOKEN` env var, never hard-code it, and use `--tls` on untrusted
+  networks.
+* The original v1 pair (`server.py` / `main.py`) has **no authentication at
+  all** — anyone who can reach the port can connect. Use v1 only on
+  localhost/trusted networks, or migrate to the v2 suite.

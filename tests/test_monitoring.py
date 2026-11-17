@@ -126,6 +126,68 @@ def test_wrong_token_is_rejected(server):
     assert server.list_sessions() == []
 
 
+# ------------------------------------------------------------ unauthenticated / hostile peers
+def _raw_client(port):
+    sock = socket.create_connection(("127.0.0.1", port), timeout=5)
+    sock.settimeout(5)
+    return LineConnection(sock)
+
+
+def test_correct_token_gets_welcome(server):
+    conn = _raw_client(server.port)
+    conn.send({"type": "hello", "token": "test-token", "hostname": "legit"})
+    reply = conn.recv()
+    assert reply["type"] == "welcome"
+    assert reply["client_id"].startswith("legit-")
+    conn.sock.close()
+
+
+def test_missing_token_denied_and_socket_closed(server):
+    conn = _raw_client(server.port)
+    conn.send({"type": "hello", "hostname": "intruder"})  # no token field at all
+    reply = conn.recv()
+    assert reply == {"type": "denied", "reason": "invalid or missing token"}
+    # Regression: the server MUST close the socket after denying, otherwise
+    # every rejected handshake leaks a file descriptor.
+    assert conn.recv() is None
+    conn.sock.close()
+    assert server.list_sessions() == []
+
+
+def test_malformed_handshake_dropped(server):
+    sock = socket.create_connection(("127.0.0.1", server.port), timeout=5)
+    sock.settimeout(5)
+    sock.sendall(b"this is not json\n")
+    assert sock.recv(4096) == b""  # closed without a reply
+    sock.close()
+    assert server.list_sessions() == []
+
+
+def test_non_dict_json_dropped(server):
+    sock = socket.create_connection(("127.0.0.1", server.port), timeout=5)
+    sock.settimeout(5)
+    sock.sendall(b"[1, 2, 3]\n")
+    assert sock.recv(4096) == b""
+    sock.close()
+    assert server.list_sessions() == []
+
+
+def test_oversized_handshake_dropped(server):
+    sock = socket.create_connection(("127.0.0.1", server.port), timeout=5)
+    sock.settimeout(5)
+    payload = b'{"type":"hello","pad":"' + b"A" * (5 * 1024 * 1024) + b'"}'
+    try:
+        sock.sendall(payload)
+    except OSError:
+        pass  # server may close early once the size cap trips
+    try:
+        assert sock.recv(4096) == b""  # clean EOF: server dropped us
+    except ConnectionResetError:
+        pass  # RST because the server closed while we were still sending — also fine
+    sock.close()
+    assert server.list_sessions() == []
+
+
 def test_broadcast_reaches_all_agents(server):
     stop = threading.Event()
     agents = [Agent("127.0.0.1", server.port, token="test-token", interval=0.5)

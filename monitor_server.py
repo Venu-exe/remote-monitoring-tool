@@ -194,11 +194,13 @@ class CollectorServer:
                 with session.lock:
                     for entry in session.pending.values():
                         entry["event"].set()  # wake up anyone waiting on a query
-                try:
-                    raw.close()
-                except OSError:
-                    pass
                 self.log(f"[server] client disconnected: {session.client_id}")
+            # Always close the socket — including for rejected (unauthenticated
+            # or malformed) peers — otherwise each failed handshake leaks an FD.
+            try:
+                raw.close()
+            except OSError:
+                pass
 
     def _message_loop(self, session):
         while not self._stop.is_set():
