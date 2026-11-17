@@ -147,45 +147,11 @@ printf 'hello server\n' | nc 127.0.0.1 5000
 
 ---
 
-# C++ Version (v3) — `cpp/`
+# C++ version
 
-A zero-dependency C++17 port of the v2 suite. **Same wire protocol**, so C++
-and Python agents/servers interoperate (verified by `cpp/cross_test.py`).
+The zero-dependency C++17 port (v3) lives in its own repository:
 
-| File | Role |
-|---|---|
-| `cpp/json.hpp` | Minimal JSON library (parse / dump / dump_pretty) — no dependencies |
-| `cpp/protocol.{hpp,cpp}` | Newline-delimited JSON `LineConnection` with 4 MiB cap, dot-path lookup, threshold alerts |
-| `cpp/metrics.{hpp,cpp}` | Linux metrics from `/proc` + syscalls (CPU deltas, meminfo, statvfs, net/dev, top processes) |
-| `cpp/agent.cpp` | Agent binary: token handshake, heartbeats, read-only queries, backoff reconnect |
-| `cpp/server.cpp` | Collector binary: multi-agent registry, dashboard console, alerts, history |
-| `cpp/tests.cpp` | 32 unit tests (JSON, protocol, hostile input, metrics) |
-| `cpp/cross_test.py` | 10 cross-language checks (C++↔Python interop) |
+👉 **https://github.com/Venu-exe/cpp-monitoring-tool**
 
-## Build & test
-
-```bash
-cd cpp
-make            # builds build/agent and build/server
-make test       # runs the 32 C++ unit tests
-make cross      # runs the 10 cross-language tests (needs the Python suite)
-```
-
-## Usage
-
-```bash
-cd cpp
-# Terminal 1 — collector (token via env var recommended)
-MONITOR_TOKEN="$(openssl rand -hex 16)" ./build/server --host 0.0.0.0 --port 5000
-
-# Terminal 2 — on each monitored machine
-MONITOR_TOKEN="$MONITOR_TOKEN" ./build/agent --host <server-ip> --port 5000 --interval 5
-
-# The console supports the same commands as the Python dashboard:
-#   list | query <id> <cmd> | broadcast <cmd> | metrics <id> | history <id> | alerts | exit
-```
-
-The C++ agent is equally read-only: metrics + info queries only, token
-authentication on every handshake, and rejected peers always get their socket
-closed (no FD leak). Linux only (reads `/proc`). TLS is not wired up in the
-C++ build yet — use it on trusted networks or behind the Python server's TLS.
+It uses the same wire protocol as this Python suite, so C++ and Python
+agents/servers interoperate.
